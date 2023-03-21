@@ -6,14 +6,16 @@ import torch.nn.functional as F
 import argparse
 from cyclegan import *
 from discriminator import *
-from dataset import LibriSpeechDataset
+from dataset import LibriSpeechDataset, LJSpeechDataset
 import torchaudio
 import wandb
 
 
 def istft_transform(x):
-    pad = nn.ConstantPad2d(padding=(0, 1, 0, 0), value=0)
-    transform = torchaudio.transforms.InverseSpectrogram(n_fft=398, normalized=True)
+    pad = nn.ConstantPad2d(padding=(0, 1, 0, 0), value=0).to(device)
+    transform = torchaudio.transforms.InverseSpectrogram(
+        n_fft=398, normalized=False
+    ).to(device)
     x = pad(x)
     return transform(
         torch.view_as_complex(x.transpose(1, 3).transpose(1, 2).contiguous())
@@ -30,11 +32,11 @@ def train(clip_value):
 
     for epoch in range(EPOCHS):
         for batch_idx, (wav_d, spec_d, wav_r, spec_r) in enumerate(dataloader):
-            wav_d.to(device)
-            spec_d.to(device)
+            wav_d = wav_d.to(device)
+            spec_d = spec_d.to(device)
 
-            wav_r.to(device)
-            spec_r.to(device)
+            wav_r = wav_r.to(device)
+            spec_r = spec_r.to(device)
 
             optimizer_msd.zero_grad()
             optimizer_mpd.zero_grad()
@@ -174,16 +176,16 @@ def train(clip_value):
                     "disc_adv_loss_d": disc_adv_loss_d.cpu().detach(),
                     "disc_adv_loss_d": disc_adv_loss_r.cpu().detach(),
                     "clean": wandb.Audio(
-                        wav_d[0].cpu().detach().numpy().T, sample_rate=16000
+                        wav_d[0].cpu().detach().numpy().T, sample_rate=22050
                     ),
                     "rev": wandb.Audio(
-                        wav_r[0].cpu().detach().numpy().T, sample_rate=16000
+                        wav_r[0].cpu().detach().numpy().T, sample_rate=22050
                     ),
                     "fake_wav_d": wandb.Audio(
-                        fake_wav_d[0].cpu().detach().numpy().T, sample_rate=16000
+                        fake_wav_d[0].cpu().detach().numpy().T, sample_rate=22050
                     ),
                     "fake_wav_r": wandb.Audio(
-                        fake_wav_r[0].cpu().detach().numpy().T, sample_rate=16000
+                        fake_wav_r[0].cpu().detach().numpy().T, sample_rate=22050
                     )
                     # 'fake_spec_d': wandb.Image(fake_spec_d[0]),
                     # 'fake_spec_r': wandb.Image(fake_spec_r[0]),
@@ -202,7 +204,7 @@ def log_everything():
 if __name__ == "__main__":
     EPOCHS = 200
     LR = 1e-3
-    BS = 2
+    BS = 1
     CLIP_VALUE = 10
     LIMIT = 2
 
@@ -231,10 +233,13 @@ if __name__ == "__main__":
         list(mpd_r.parameters()) + list(mpd_d.parameters()), lr=LR / 2
     )
 
-    dataset = LibriSpeechDataset(data_path="./data", split="train-clean-100")
-    dataset = torch.utils.data.Subset(dataset, list(range(LIMIT)))
+    dataset = LJSpeechDataset(
+        root_dir="data/LJSpeech-1.1."
+    )  # LibriSpeechDataset(data_path="./data", split="train-clean-100")
+    print(len(dataset))
+    # dataset = torch.utils.data.Subset(dataset, list(range(LIMIT)))
     dataloader = torch.utils.data.DataLoader(
-        dataset, batch_size=BS, shuffle=True, num_workers=0
+        dataset, batch_size=BS, shuffle=False, num_workers=0
     )
     print(
         f"Generator: {sum(p.numel() for p in generator_r2d.parameters())}, MSD: {sum(p.numel() for p in msd_r.parameters())}, MPD: {sum(p.numel() for p in mpd_r.parameters())}"

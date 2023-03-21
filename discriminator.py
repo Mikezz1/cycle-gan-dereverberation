@@ -77,14 +77,14 @@ class ScaleDiscriminator(nn.Module):
             128,
             128,
             256,
-            512,
+            256,
         ]
         self.out_channels = [
             128,
             128,
             256,
-            512,
-            1024,
+            256,
+            256,
         ]
         self.activation = nn.LeakyReLU()
 
@@ -109,7 +109,7 @@ class ScaleDiscriminator(nn.Module):
             ]
         )
         self.convs.apply(weights_init)
-        self.out = self.norm(nn.Conv1d(1024, 1, 3, 1, padding=1))
+        self.out = self.norm(nn.Conv1d(256, 1, 3, 1, padding=1))
 
     def forward(self, x):
         fmaps = []
@@ -189,7 +189,7 @@ class SubMPD(nn.Module):
                 weight_norm(
                     nn.Conv2d(
                         in_channels=128,
-                        out_channels=512,
+                        out_channels=256,
                         kernel_size=(5, 1),
                         stride=(3, 1),
                         padding=(2, 0),
@@ -197,8 +197,8 @@ class SubMPD(nn.Module):
                 ),
                 weight_norm(
                     nn.Conv2d(
-                        in_channels=512,
-                        out_channels=512,
+                        in_channels=256,
+                        out_channels=256,
                         kernel_size=(5, 1),
                         stride=(3, 1),
                         padding=(2, 0),
@@ -218,7 +218,7 @@ class SubMPD(nn.Module):
 
         self.out = weight_norm(
             nn.Conv2d(
-                in_channels=512, out_channels=1, kernel_size=(3, 1), padding=(1, 0)
+                in_channels=256, out_channels=1, kernel_size=(3, 1), padding=(1, 0)
             )
         )
 
