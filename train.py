@@ -13,22 +13,22 @@ import wandb
 
 def istft_transform(x):
     pad = nn.ConstantPad2d(padding=(0, 1, 0, 0), value=0).to(device)
-    transform = torchaudio.transforms.InverseSpectrogram(
-        n_fft=398, normalized=False
-    ).to(device)
+    transform = torchaudio.transforms.InverseSpectrogram(n_fft=398, normalized=True).to(
+        device
+    )
     x = pad(x)
     return transform(
         torch.view_as_complex(x.transpose(1, 3).transpose(1, 2).contiguous())
     ).unsqueeze(1)
 
 
-def train(clip_value):
+def train(clip_value, use_mpd):
     generator_r2d.train()
     generator_d2r.train()
     msd_r.train()
-    mpd_d.train()
+    mpd_d.train() if use_mpd else None
 
-    wav_pad = nn.ConstantPad1d(padding=(0, 80), value=0)
+    wav_pad = nn.ConstantPad1d(padding=(0, 160), value=0)
 
     for epoch in range(EPOCHS):
         for batch_idx, (wav_d, spec_d, wav_r, spec_r) in enumerate(dataloader):
@@ -39,13 +39,14 @@ def train(clip_value):
             spec_r = spec_r.to(device)
 
             optimizer_msd.zero_grad()
-            optimizer_mpd.zero_grad()
+            optimizer_mpd.zero_grad() if use_mpd else None
             optimizer_g.zero_grad()
 
             # ------------- Train Discriminator ------------- #
 
-            fake_spec_d = generator_r2d(spec_r)
-            fake_spec_r = generator_d2r(spec_d)
+            with torch.no_grad():
+                fake_spec_d = generator_r2d(spec_r)
+                fake_spec_r = generator_d2r(spec_d)
 
             fake_wav_d, fake_wav_r = wav_pad(istft_transform(fake_spec_d)), wav_pad(
                 istft_transform(fake_spec_r)
@@ -54,20 +55,48 @@ def train(clip_value):
             # disc r and disc fake r
             real_msd_d, _ = msd_d(wav_d)
 
-            real_mpd_d, _ = mpd_d(wav_d)
+            real_mpd_d, _ = (
+                mpd_d(wav_d)
+                if use_mpd
+                else (
+                    float("nan"),
+                    float("nan"),
+                )
+            )
 
             fake_msd_d, _ = msd_d(fake_wav_d)
 
-            fake_mpd_d, _ = mpd_d(fake_wav_d)
+            fake_mpd_d, _ = (
+                mpd_d(fake_wav_d)
+                if use_mpd
+                else (
+                    float("nan"),
+                    float("nan"),
+                )
+            )
 
             # disc d and disc fake d
             real_msd_r, _ = msd_d(wav_r)
 
-            real_mpd_r, _ = mpd_d(wav_r)
+            real_mpd_r, _ = (
+                mpd_d(wav_r)
+                if use_mpd
+                else (
+                    float("nan"),
+                    float("nan"),
+                )
+            )
 
             fake_msd_r, _ = msd_d(fake_wav_r)
 
-            fake_mpd_r, _ = mpd_d(fake_wav_r)
+            fake_mpd_r, _ = (
+                mpd_d(fake_wav_r)
+                if use_mpd
+                else (
+                    float("nan"),
+                    float("nan"),
+                )
+            )
 
             # adversarial loss of discriminator
 
@@ -82,12 +111,16 @@ def train(clip_value):
 
             disc_loss.backward()
             optimizer_msd.step()
-            optimizer_mpd.step()
+            optimizer_mpd.step() if USE_MPD else None
 
             nn.utils.clip_grad_norm_(msd_d.parameters(), clip_value)
             nn.utils.clip_grad_norm_(msd_r.parameters(), clip_value)
-            nn.utils.clip_grad_norm_(mpd_d.parameters(), clip_value)
-            nn.utils.clip_grad_norm_(mpd_r.parameters(), clip_value)
+            nn.utils.clip_grad_norm_(
+                mpd_d.parameters(), clip_value
+            ) if use_mpd else None
+            nn.utils.clip_grad_norm_(
+                mpd_r.parameters(), clip_value
+            ) if use_mpd else None
 
             # ------------- Train Generator ------------- #
             fake_spec_d = generator_r2d(spec_r)
@@ -105,20 +138,32 @@ def train(clip_value):
             # disc r and disc fake r
             real_msd_d, real_msd_d_fmap = msd_d(wav_d)
 
-            real_mpd_d, real_mpd_d_fmap = mpd_d(wav_d)
+            real_mpd_d, real_mpd_d_fmap = (
+                mpd_d(wav_d) if use_mpd else float("nan"),
+                float("nan"),
+            )
 
             fake_msd_d, fake_msd_d_fmap = msd_d(fake_wav_d)
 
-            fake_mpd_d, fake_mpd_d_fmap = mpd_d(fake_wav_d)
+            fake_mpd_d, fake_mpd_d_fmap = (
+                mpd_d(fake_wav_d) if use_mpd else float("nan"),
+                float("nan"),
+            )
 
             # disc d and disc fake d
             real_msd_r, real_msd_r_fmap = msd_d(wav_r)
 
-            real_mpd_r, real_mpd_r_fmap = mpd_d(wav_r)
+            real_mpd_r, real_mpd_r_fmap = (
+                mpd_d(wav_r) if use_mpd else float("nan"),
+                float("nan"),
+            )
 
             fake_msd_r, fake_msd_r_fmap = msd_d(fake_wav_r)
 
-            fake_mpd_r, fake_mpd_r_fmap = mpd_d(fake_wav_r)
+            fake_mpd_r, fake_mpd_r_fmap = (
+                mpd_d(fake_wav_r) if use_mpd else float("nan"),
+                float("nan"),
+            )
 
             # cycle d
 
@@ -207,18 +252,19 @@ if __name__ == "__main__":
     BS = 1
     CLIP_VALUE = 10
     LIMIT = 2
+    USE_MPD = False
+    SAMPLE_LENGTH = 32000
 
-    wandb.init(project="CycleGAN_dereverberation")
+    # wandb.init(project="CycleGAN_dereverberation")
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # _d2r means reverberated -> dry, _r2d means dry -> reverberated
     msd_r = MSD().to(device)
-    mpd_r = MPD(periods=[2, 5, 7]).to(device)
+    mpd_r = MPD(periods=[2, 5, 7]).to(device) if USE_MPD else None
 
     msd_d = MSD().to(device)
-    mpd_d = MPD(periods=[2, 5, 7]).to(device)
-
+    mpd_d = MPD(periods=[2, 5, 7]).to(device) if USE_MPD else None
     generator_r2d = Generator().to(device)
     generator_d2r = Generator().to(device)
 
@@ -229,12 +275,14 @@ if __name__ == "__main__":
     optimizer_msd = torch.optim.Adam(
         list(msd_d.parameters()) + list(msd_r.parameters()), lr=LR / 2
     )
-    optimizer_mpd = torch.optim.Adam(
-        list(mpd_r.parameters()) + list(mpd_d.parameters()), lr=LR / 2
+    optimizer_mpd = (
+        torch.optim.Adam(list(mpd_r.parameters()) + list(mpd_d.parameters()), lr=LR / 2)
+        if USE_MPD
+        else None
     )
 
     dataset = LJSpeechDataset(
-        root_dir="data/LJSpeech-1.1."
+        root_dir="data/train", sample_length=SAMPLE_LENGTH
     )  # LibriSpeechDataset(data_path="./data", split="train-clean-100")
     print(len(dataset))
     # dataset = torch.utils.data.Subset(dataset, list(range(LIMIT)))
@@ -242,6 +290,6 @@ if __name__ == "__main__":
         dataset, batch_size=BS, shuffle=False, num_workers=0
     )
     print(
-        f"Generator: {sum(p.numel() for p in generator_r2d.parameters())}, MSD: {sum(p.numel() for p in msd_r.parameters())}, MPD: {sum(p.numel() for p in mpd_r.parameters())}"
+        f"Generator: {sum(p.numel() for p in generator_r2d.parameters())}, MSD: {sum(p.numel() for p in msd_r.parameters())}, MPD: {sum(p.numel() for p in mpd_r.parameters()) if USE_MPD else 0}"
     )
-    train(clip_value=CLIP_VALUE)
+    train(clip_value=CLIP_VALUE, use_mpd=USE_MPD)

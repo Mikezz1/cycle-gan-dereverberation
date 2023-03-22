@@ -1,10 +1,9 @@
-audiomentations==0.29.0
-gdown==4.6.3
-Pillow==9.4.0
-pyarrow==11.0.0
-torch==2.0.0
-torchaudio==2.0.1
-torchvision==0.14.1
-tqdm==4.64.1
 wandb
 pyroomacoustics
+audiomentations
+Pillow
+pyarrow
+torch
+torchaudio
+tqdm
+

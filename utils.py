@@ -12,5 +12,5 @@ def add_rir(wav, sample_rate):
                 calculation_mode="absorption",
             )
         ]
-    )  # , min_target_rt60=0.4, max_target_rt60=1.0
+    )
     return torch.Tensor(aug(wav, sample_rate=sample_rate))
