@@ -224,35 +224,35 @@ def train(clip_value, use_mpd):
             nn.utils.clip_grad_norm_(generator_r2d.parameters(), clip_value)
             nn.utils.clip_grad_norm_(generator_d2r.parameters(), clip_value)
 
-            # wandb.log(
-            #     {
-            #         "disc_loss": disc_loss.cpu().detach(),
-            #         "gen_loss": gen_loss.cpu().detach(),
-            #         "identity_loss_d": identity_loss_d.cpu().detach(),
-            #         "cycle_loss_d": cycle_loss_d.cpu().detach(),
-            #         "cycle_loss_r": cycle_loss_d.cpu().detach(),
-            #         "generator_adv_loss_d": sum(generator_adv_loss_d_cycle)
-            #         .cpu()
-            #         .detach(),
-            #         "generator_adv_loss_r": sum(generator_adv_loss_r_cycle)
-            #         .cpu()
-            #         .detach(),
-            #         "disc_adv_loss_d": disc_adv_loss_d.cpu().detach(),
-            #         "disc_adv_loss_d": disc_adv_loss_r.cpu().detach(),
-            #         "clean": wandb.Audio(
-            #             wav_d[0].cpu().detach().numpy().T, sample_rate=22050
-            #         ),
-            #         "rev": wandb.Audio(
-            #             wav_r[0].cpu().detach().numpy().T, sample_rate=22050
-            #         ),
-            #         "fake_wav_d": wandb.Audio(
-            #             fake_wav_d[0].cpu().detach().numpy().T, sample_rate=22050
-            #         ),
-            #         "fake_wav_r": wandb.Audio(
-            #             fake_wav_r[0].cpu().detach().numpy().T, sample_rate=22050
-            #         ),
-            #     }
-            # )
+            wandb.log(
+                {
+                    "disc_loss": disc_loss.cpu().detach(),
+                    "gen_loss": gen_loss.cpu().detach(),
+                    "identity_loss_d": identity_loss_d.cpu().detach(),
+                    "cycle_loss_d": cycle_loss_d.cpu().detach(),
+                    "cycle_loss_r": cycle_loss_d.cpu().detach(),
+                    "generator_adv_loss_d": sum(generator_adv_loss_d_cycle)
+                    .cpu()
+                    .detach(),
+                    "generator_adv_loss_r": sum(generator_adv_loss_r_cycle)
+                    .cpu()
+                    .detach(),
+                    "disc_adv_loss_d": disc_adv_loss_d.cpu().detach(),
+                    "disc_adv_loss_d": disc_adv_loss_r.cpu().detach(),
+                    "clean": wandb.Audio(
+                        wav_d[0].cpu().detach().numpy().T, sample_rate=22050
+                    ),
+                    "rev": wandb.Audio(
+                        wav_r[0].cpu().detach().numpy().T, sample_rate=22050
+                    ),
+                    "fake_wav_d": wandb.Audio(
+                        fake_wav_d[0].cpu().detach().numpy().T, sample_rate=22050
+                    ),
+                    "fake_wav_r": wandb.Audio(
+                        fake_wav_r[0].cpu().detach().numpy().T, sample_rate=22050
+                    ),
+                }
+            )
 
 
 def log_everything():
@@ -268,7 +268,7 @@ if __name__ == "__main__":
     USE_MPD = False
     SAMPLE_LENGTH = 8000
 
-    # wandb.init(project="CycleGAN_dereverberation")
+    wandb.init(project="CycleGAN_dereverberation")
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
