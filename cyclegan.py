@@ -67,10 +67,10 @@ class Generator(nn.Module):
         self.down = nn.ModuleList(
             [
                 EncoderBlock(32, 64, k=(4, 4), s=(2, 2)),
-                EncoderBlock(64, 64, k=(3, 4), s=(1, 2)),
+                EncoderBlock(64, 64, k=(4, 3), s=(2, 1)),
                 EncoderBlock(64, 128, k=(4, 4), s=(2, 2)),
-                EncoderBlock(128, 128, k=(3, 4), s=(1, 2)),
-                EncoderBlock(128, 256, k=(4, 4), s=(2, 2)),
+                EncoderBlock(128, 128, k=(3, 3), s=(1, 1)),
+                EncoderBlock(128, 256, k=(4, 3), s=(2, 1)),
                 # EncoderBlock(256, 512, k=(3, 3), s=(1, 1)),
             ]
         )
@@ -85,10 +85,10 @@ class Generator(nn.Module):
         self.up = nn.ModuleList(
             [
                 # DecoderBlock(512 + 512, 256, k=(3, 3), s=(1, 1)),
-                DecoderBlock(256 + 256, 128, k=(4, 4), s=(2, 2)),
-                DecoderBlock(128 + 128, 128, k=(3, 4), s=(1, 2)),
+                DecoderBlock(256 + 256, 128, k=(4, 3), s=(2, 1)),
+                DecoderBlock(128 + 128, 128, k=(3, 3), s=(1, 1)),
                 DecoderBlock(128 + 128, 64, k=(4, 4), s=(2, 2)),
-                DecoderBlock(64 + 64, 64, k=(3, 4), s=(1, 2)),
+                DecoderBlock(64 + 64, 64, k=(4, 3), s=(2, 1)),
                 DecoderBlock(64 + 64, 32, k=(4, 4), s=(2, 2)),
             ]
         )
@@ -100,6 +100,7 @@ class Generator(nn.Module):
         skips = []
         for layer in self.down:
             x = layer(x)
+
             skips.append(x)
 
         x = self.mid(x)
@@ -152,8 +153,8 @@ def generator_adv_loss(
         msd_loss += torch.mean((output - 1) ** 2)
 
     return (
-        feature_loss_mpd,
-        feature_loss_msd,
+        2 * feature_loss_mpd,
+        2 * feature_loss_msd,
         msd_loss,
         mpd_loss,
     )

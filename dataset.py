@@ -86,13 +86,13 @@ class LJSpeechDataset(Dataset):
     def __init__(self, root_dir, sample_length):
         self.root_dir = root_dir
         self.audio_files = sorted(os.listdir(root_dir))
-        self.segment_size = sample_length
+        self.segment_size = 16000
 
         random.shuffle(self.audio_files)
         self.audio_files_dry = self.audio_files[: len(self.audio_files) // 2]
         self.audio_files_reverb = self.audio_files[len(self.audio_files) // 2 :]
         self.transform = torchaudio.transforms.Spectrogram(
-            n_fft=398, normalized=True, power=None
+            n_fft=798, normalized=True, power=None
         )
 
     def __len__(self):
